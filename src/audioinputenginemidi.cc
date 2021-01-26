@@ -94,6 +94,7 @@ bool AudioInputEngineMidi::isValid() const
 constexpr std::uint8_t NoteOff{0x80};
 constexpr std::uint8_t NoteOn{0x90};
 constexpr std::uint8_t NoteAftertouch{0xA0};
+constexpr std::uint8_t ControlChange{0xB0};
 
 // Note type mask:
 constexpr std::uint8_t NoteMask{0xF0};
@@ -108,42 +109,65 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 		return;
 	}
 
-	auto key = midi_buffer[1]; // NOLINT - span
-	auto velocity = midi_buffer[2]; // NOLINT - span
-	auto instrument_idx = mmap.lookup(key);
-	auto instruments = mmap.lookup(key);
-	for(const auto& instrument_idx : instruments)
+	switch(midi_buffer[0] & NoteMask) // NOLINT - span
 	{
-		switch(midi_buffer[0] & NoteMask) // NOLINT - span
+	case NoteOff:
+		// Ignore for now
+		break;
+
+	case NoteOn:
 		{
-		case NoteOff:
-			// Ignore for now
-			break;
-
-		case NoteOn:
-			if(velocity != 0)
+			auto key = midi_buffer[1]; // NOLINT - span
+			auto velocity = midi_buffer[2]; // NOLINT - span
+			auto instruments = mmap.lookup(key);
+			for(const auto& instrument_idx : instruments)
 			{
-				constexpr float lower_offset{0.5f};
-				constexpr float midi_velocity_max{127.0f};
-				// maps velocities to [.5/127, 126.5/127]
-				assert(velocity <= 127); // MIDI only support up to 127
-				auto centered_velocity =
-					(static_cast<float>(velocity) - lower_offset) / midi_velocity_max;
-				events.push_back({EventType::OnSet, (std::size_t)instrument_idx,
-				                  offset, centered_velocity});
+				if(velocity != 0)
+				{
+					constexpr float lower_offset{0.5f};
+					constexpr float midi_velocity_max{127.0f};
+					// maps velocities to [.5/127, 126.5/127]
+					assert(velocity <= 127); // MIDI only support up to 127
+					auto centered_velocity =
+						(static_cast<float>(velocity) - lower_offset) / midi_velocity_max;
+					events.push_back({EventType::OnSet, (std::size_t)instrument_idx,
+					                  offset, centered_velocity, positional_information});
+				}
 			}
-			break;
+		}
+		break;
 
-		case NoteAftertouch:
-			if(velocity > 0)
+	case NoteAftertouch:
+		{
+			auto key = midi_buffer[1]; // NOLINT - span
+			auto velocity = midi_buffer[2]; // NOLINT - span
+			auto instruments = mmap.lookup(key);
+			for(const auto& instrument_idx : instruments)
 			{
-				events.push_back({EventType::Choke, (std::size_t)instrument_idx,
-				                  offset, .0f});
+				if(velocity > 0)
+				{
+					events.push_back({EventType::Choke, (std::size_t)instrument_idx,
+					                  offset, .0f, .0f});
+				}
 			}
-			break;
+		}
+		break;
 
-		default:
-			break;
+	case ControlChange:
+		{
+			auto controller_number = midi_buffer[1]; // NOLINT - span
+			auto value = midi_buffer[2]; // NOLINT - span
+			if(controller_number == 16) // positional information
+			{
+				// Store value for use in next NoteOn event.
+				positional_information = value / 127.0f;
+
+				// Return here to prevent reset of cached positional information.
+				return;
+			}
 		}
 	}
+
+	// Clear cached positional information.
+	positional_information = 0.0f;
 }

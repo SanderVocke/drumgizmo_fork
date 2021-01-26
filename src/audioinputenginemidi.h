@@ -71,4 +71,6 @@ private:
 	bool is_valid{false};
 
 	ConfigFile refs{REFSFILE};
+
+	float positional_information{0.0f};
 };
