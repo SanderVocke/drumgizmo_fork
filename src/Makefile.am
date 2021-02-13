@@ -76,6 +76,7 @@ libdg_la_SOURCES = \
 	$(top_srcdir)/src/staminafilter.cc \
 	$(top_srcdir)/src/thread.cc \
 	$(top_srcdir)/src/velocityfilter.cc \
+	$(top_srcdir)/src/positionfilter.cc \
 	$(top_srcdir)/src/versionstr.cc
 
 EXTRA_DIST = \
@@ -140,6 +141,7 @@ EXTRA_DIST = \
 	thread.h \
 	translation.h \
 	velocityfilter.h \
+	positionfilter.h \
 	versionstr.h \
 	zrwrapper.h
 
