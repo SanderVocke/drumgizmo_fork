@@ -249,10 +249,9 @@ bool InputProcessor::processOnset(event_t& event, std::size_t pos,
 	// Apply directed chokes to mute other instruments if needed
 	applyDirectedChoke(settings, kit, *instr, event, events_ds, pos);
 
-	auto const power_max = instr->getMaxPower();
-	auto const power_min = instr->getMinPower();
-	float const power_span = power_max - power_min;
-	float const instrument_level = power_min + event.velocity*power_span;
+	auto power = instr->getPowers(event.position);
+	const float power_span = power.max - power.min;
+	const float instrument_level = power.min + event.velocity * power_span;
 	// FIXME: bad variable naming of parameters
 	const auto sample = instr->sample(instrument_level, event.position, event.offset + pos);
 

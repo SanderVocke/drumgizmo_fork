@@ -130,27 +130,15 @@ std::size_t Instrument::getNumberOfFiles() const
 	return audiofiles.size();
 }
 
-float Instrument::getMaxPower() const
+Instrument::PowerRange Instrument::getPowers(float position) const
 {
 	if(version >= VersionStr("2.0"))
 	{
-		return powerlist.getMaxPower();
+		return { powerlist.getMaxPower(), powerlist.getMaxPower() };
 	}
 	else
 	{
-		return 1.0f;
-	}
-}
-
-float Instrument::getMinPower() const
-{
-	if(version >= VersionStr("2.0"))
-	{
-		return powerlist.getMinPower();
-	}
-	else
-	{
-		return 0.0f;
+		return { 0.0f, 1.0f };
 	}
 }
 

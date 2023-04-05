@@ -58,7 +58,7 @@ void SampleSelection::finalise()
 // FIXME: bad variable naming
 const Sample* SampleSelection::get(level_t level, float position, std::size_t pos)
 {
-	const auto& samples = powerlist.getPowerListItems();
+	const auto& samples = powerlist.getPowerListItems(position);
 	if(!samples.size())
 	{
 		return nullptr; // No samples to choose from.
@@ -80,7 +80,7 @@ const Sample* SampleSelection::get(level_t level, float position, std::size_t po
 	const float f_diverse = (1./2.)*settings.sample_selection_f_diverse.load();
 	const float f_random = (1./3.)*settings.sample_selection_f_random.load();
 
-	float power_range = powerlist.getMaxPower() - powerlist.getMinPower();
+	float power_range = samples.getMaxPower() - samples.getMinPower();
 	// If all power values are the same then power_range is invalid but we want
 	// to avoid division by zero.
 	if (power_range == 0.) { power_range = 1.0; }
