@@ -115,7 +115,7 @@ void AudioCacheEventHandler::unlock()
 }
 
 void AudioCacheEventHandler::pushLoadNextEvent(AudioCacheFile* afile,
-                                               size_t channel,
+                                               size_t channel_index,
                                                size_t pos, sample_t* buffer,
                                                volatile bool* ready)
 {
@@ -124,8 +124,8 @@ void AudioCacheEventHandler::pushLoadNextEvent(AudioCacheFile* afile,
 	cache_event.pos = pos;
 	cache_event.afile = afile;
 
-	CacheChannel c;
-	c.channel = channel;
+	CacheChannel c{};
+	c.channel_index = channel_index;
 	c.samples = buffer;
 
 	*ready = false;

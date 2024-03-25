@@ -68,7 +68,7 @@ public:
 	//! This methods are supplied to make this class lockable by std::lock_guard
 	void unlock();
 
-	void pushLoadNextEvent(AudioCacheFile* afile, size_t channel,
+	void pushLoadNextEvent(AudioCacheFile* afile, size_t channel_index,
 	                       size_t pos, sample_t* buffer,
 	                       volatile bool* ready);
 	void pushCloseEvent(cacheid_t id);

@@ -31,16 +31,17 @@
 #include <map>
 #include <vector>
 #include <mutex>
+#include <cstddef>
 
 #include <sndfile.h>
 
-#include <audiotypes.h>
+#include "audiotypes.h"
 
 //! Channel data container in the cache world.
 class CacheChannel
 {
 public:
-	size_t channel; //< Channel number
+	size_t channel_index; //< Channel number
 	sample_t* samples; //< Sample buffer pointer.
 	size_t num_samples; //< Number of samples in the sample buffer
 	volatile bool* ready; //< Is set to true when the loading is done.
@@ -72,12 +73,13 @@ public:
 	size_t getChannelCount() const;
 
 	//! Read audio data from the file into the supplied channel caches.
-	void readChunk(const CacheChannels& channels, size_t pos, size_t num_samples);
+	void readChunk(const CacheChannels& channels, std::size_t pos,
+	               std::size_t num_samples);
 
 private:
-	int ref{0};
-	SNDFILE* fh{nullptr};
-	SF_INFO sf_info;
+	int ref{};
+	SNDFILE* fh{};
+	SF_INFO sf_info{};
 	std::string filename;
 	std::vector<sample_t>& read_buffer;
 };
