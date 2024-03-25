@@ -40,43 +40,43 @@ libdg_la_LIBADD = \
 	$(SNDFILE_LIBS) $(PTHREAD_LIBS) libzr.la libpugi.la
 
 libdg_la_SOURCES = \
-	audiocachefile.cc \
-	audiocache.cc \
-	audiocacheeventhandler.cc \
-	audiocacheidmanager.cc \
-	audioinputenginemidi.cc \
-	audiofile.cc \
-	bytesizeparser.cc \
-	channel.cc \
-	channelmixer.cc \
-	configfile.cc \
-	configparser.cc \
-	directory.cc \
-	domloader.cc \
-	dgxmlparser.cc \
-	drumgizmo.cc \
-	drumgizmoconf.cc \
-	drumkit.cc \
-	drumkitloader.cc \
-	events.cc \
-	events_ds.cc \
-	inputprocessor.cc \
-	instrument.cc \
-	latencyfilter.cc \
-	midimapparser.cc \
-	midimapper.cc \
-	path.cc \
-	powerlist.cc \
-	powermap.cc \
-	powermapfilter.cc \
-	random.cc \
-	sample.cc \
-	sample_selection.cc \
-	sem.cc \
-	staminafilter.cc \
-	thread.cc \
-	velocityfilter.cc \
-	versionstr.cc
+	$(top_srcdir)/src/audiocachefile.cc \
+	$(top_srcdir)/src/audiocache.cc \
+	$(top_srcdir)/src/audiocacheeventhandler.cc \
+	$(top_srcdir)/src/audiocacheidmanager.cc \
+	$(top_srcdir)/src/audioinputenginemidi.cc \
+	$(top_srcdir)/src/audiofile.cc \
+	$(top_srcdir)/src/bytesizeparser.cc \
+	$(top_srcdir)/src/channel.cc \
+	$(top_srcdir)/src/channelmixer.cc \
+	$(top_srcdir)/src/configfile.cc \
+	$(top_srcdir)/src/configparser.cc \
+	$(top_srcdir)/src/directory.cc \
+	$(top_srcdir)/src/domloader.cc \
+	$(top_srcdir)/src/dgxmlparser.cc \
+	$(top_srcdir)/src/drumgizmo.cc \
+	$(top_srcdir)/src/drumgizmoconf.cc \
+	$(top_srcdir)/src/drumkit.cc \
+	$(top_srcdir)/src/drumkitloader.cc \
+	$(top_srcdir)/src/events.cc \
+	$(top_srcdir)/src/events_ds.cc \
+	$(top_srcdir)/src/inputprocessor.cc \
+	$(top_srcdir)/src/instrument.cc \
+	$(top_srcdir)/src/latencyfilter.cc \
+	$(top_srcdir)/src/midimapparser.cc \
+	$(top_srcdir)/src/midimapper.cc \
+	$(top_srcdir)/src/path.cc \
+	$(top_srcdir)/src/powerlist.cc \
+	$(top_srcdir)/src/powermap.cc \
+	$(top_srcdir)/src/powermapfilter.cc \
+	$(top_srcdir)/src/random.cc \
+	$(top_srcdir)/src/sample.cc \
+	$(top_srcdir)/src/sample_selection.cc \
+	$(top_srcdir)/src/sem.cc \
+	$(top_srcdir)/src/staminafilter.cc \
+	$(top_srcdir)/src/thread.cc \
+	$(top_srcdir)/src/velocityfilter.cc \
+	$(top_srcdir)/src/versionstr.cc
 
 EXTRA_DIST = \
 	$(libzr_la_SOURCES) \
@@ -141,3 +141,10 @@ EXTRA_DIST = \
 	velocityfilter.h \
 	versionstr.h \
 	zrwrapper.h
+
+%.lint: %.cc
+	clang-tidy --quiet $< -- $(libdg_la_CPPFLAGS) $(CXXFLAGS)
+
+LINT_FILES = $(libdg_la_SOURCES:.cc=.lint)
+
+lint: $(LINT_FILES)
