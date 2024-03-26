@@ -26,9 +26,8 @@
  */
 #include "versionstr.h"
 
-#include <memory.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 
 #include <hugin.hpp>
 

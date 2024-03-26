@@ -32,7 +32,7 @@
 #include <cstring>
 #include <mutex>
 
-#include <audiotypes.h>
+#include "audiotypes.h"
 #include <config.h>
 
 #include <hugin.hpp>

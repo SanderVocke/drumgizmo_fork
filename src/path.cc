@@ -30,8 +30,8 @@
 #include <libgen.h>
 #endif/*__MINGW32__*/
 
-#include <string.h>
-#include <stdlib.h>
+#include <cstring>
+#include <cstdlib>
 
 std::string getPath(const std::string& file)
 {

@@ -26,7 +26,7 @@
  */
 #include "audiocacheeventhandler.h"
 
-#include <assert.h>
+#include <cassert>
 
 #include <hugin.hpp>
 

@@ -27,7 +27,8 @@
 #include "audiocacheidmanager.h"
 
 #include <limits>
-#include <assert.h>
+#include <cassert>
+
 
 AudioCacheIDManager::~AudioCacheIDManager()
 {
