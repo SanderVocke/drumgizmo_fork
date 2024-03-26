@@ -37,7 +37,7 @@ AudioCacheIDManager::~AudioCacheIDManager()
 
 void AudioCacheIDManager::init(unsigned int capacity)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
 	id2cache.resize(capacity);
 	available_ids.resize(capacity);
@@ -49,7 +49,7 @@ void AudioCacheIDManager::init(unsigned int capacity)
 
 cache_t& AudioCacheIDManager::getCache(cacheid_t id)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
 	assert(id != CACHE_NOID);
 	assert(id != CACHE_DUMMYID);
@@ -62,7 +62,7 @@ cache_t& AudioCacheIDManager::getCache(cacheid_t id)
 
 cacheid_t AudioCacheIDManager::registerID(const cache_t& cache)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
 	cacheid_t id = CACHE_NOID;
 
@@ -86,7 +86,7 @@ cacheid_t AudioCacheIDManager::registerID(const cache_t& cache)
 
 void AudioCacheIDManager::releaseID(cacheid_t id)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
 	assert(id2cache[id].id != CACHE_NOID); // Test if it wasn't already released.
 
@@ -97,7 +97,7 @@ void AudioCacheIDManager::releaseID(cacheid_t id)
 
 void AudioCacheIDManager::disableActive()
 {
-	// Run through all active cache_ts and disable them.
+	// Run through all active CacheBuffers and disable them.
 	for(auto& cache : id2cache)
 	{
 		if(cache.id != CACHE_NOID)

@@ -69,7 +69,7 @@ public:
 		: data{}
 		, mutex{}
 	{
-		std::lock_guard<std::mutex> lock{other.mutex};
+		const std::lock_guard<std::mutex> lock{other.mutex};
 		data = other.data;
 	}
 
@@ -77,13 +77,13 @@ public:
 		: data{}
 		, mutex{}
 	{
-		std::lock_guard<std::mutex> lock{other.mutex};
+		const std::lock_guard<std::mutex> lock{other.mutex};
 		std::swap(data, other.data);
 	}
 
 	T operator=(T data)
 	{
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		this->data = std::move(data);
 		return this->data;
 	}
@@ -100,42 +100,42 @@ public:
 
 	void store(T data)
 	{
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		this->data = std::move(data);
 	}
 
 	T load() const {
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		return data;
 	}
 
 	T exchange(T data){
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		std::swap(data, this->data);
 		return data;
 	}
 
 	bool operator==(const T& other) const
 	{
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		return other == data;
 	}
 
 	bool operator!=(const T& other) const
 	{
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		return !(other == data);
 	}
 
 	bool operator==(const Atomic<T>& other) const
 	{
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		return other.load() == data;
 	}
 
 	bool operator!=(const Atomic<T>& other) const
 	{
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		return !(other.load() == data);
 	}
 

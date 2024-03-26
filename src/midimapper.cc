@@ -30,7 +30,7 @@ std::vector<int> MidiMapper::lookup(int note_id)
 {
 	std::vector<int> instruments;
 
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
 	for(const auto& map_entry : midimap)
 	{
@@ -49,7 +49,7 @@ std::vector<int> MidiMapper::lookup(int note_id)
 
 void MidiMapper::swap(instrmap_t& instrmap, midimap_t& midimap)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
 	std::swap(this->instrmap, instrmap);
 	std::swap(this->midimap, midimap);

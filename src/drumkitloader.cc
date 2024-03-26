@@ -93,7 +93,7 @@ void DrumKitLoader::deinit()
 		framesize_semaphore.post();
 
 		{
-			std::lock_guard<std::mutex> guard(mutex);
+			const std::lock_guard<std::mutex> guard(mutex);
 			load_queue.clear();
 		}
 
@@ -301,13 +301,13 @@ void DrumKitLoader::loadKitAudio(const DrumKit& kit)
 
 void DrumKitLoader::skip()
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 	load_queue.clear();
 }
 
 void DrumKitLoader::setFrameSize(std::size_t framesize)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 	this->framesize = framesize;
 	framesize_semaphore.post(); // Signal that the framesize has been set.
 }
@@ -324,7 +324,7 @@ void DrumKitLoader::thread_main()
 	{
 		std::size_t size;
 		{
-			std::lock_guard<std::mutex> guard(mutex);
+			const std::lock_guard<std::mutex> guard(mutex);
 			size = load_queue.size();
 		}
 
@@ -367,7 +367,7 @@ void DrumKitLoader::thread_main()
 
 		std::string filename;
 		{
-			std::lock_guard<std::mutex> guard(mutex);
+			const std::lock_guard<std::mutex> guard(mutex);
 
 			if(load_queue.size() == 0)
 			{

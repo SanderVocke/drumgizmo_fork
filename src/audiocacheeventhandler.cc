@@ -179,7 +179,7 @@ size_t AudioCacheEventHandler::getChunkSize() const
 
 AudioCacheFile& AudioCacheEventHandler::openFile(const std::string& filename)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	const std::lock_guard<std::mutex> lock(mutex);
 	return files.getFile(filename);
 }
 
@@ -207,7 +207,7 @@ void AudioCacheEventHandler::handleLoadNextEvent(CacheEvent& cache_event)
 
 void AudioCacheEventHandler::handleCloseEvent(CacheEvent& cache_event)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	const std::lock_guard<std::mutex> lock(mutex);
 	handleCloseCache(cache_event.id);
 }
 
@@ -272,7 +272,7 @@ void AudioCacheEventHandler::pushEvent(CacheEvent& cache_event)
 	}
 
 	{
-		std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 
 		bool found = false;
 
