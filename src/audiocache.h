@@ -38,6 +38,7 @@
 #include "audiocacheidmanager.h"
 #include "audiocacheeventhandler.h"
 #include "settings.h"
+#include "owner.h"
 
 class AudioCache
 {
@@ -68,8 +69,10 @@ public:
 	//! \param [out] new_id The newly created cache id.
 	//! \return A pointer to the first buffer containing the
 	//!  'initial_samples_needed' number of samples.
-	sample_t* open(const AudioFile& file, std::size_t initial_samples_needed, int channel,
-	               cacheid_t& new_id);
+	gsl::owner<sample_t*> open(const AudioFile& file,
+	                           std::size_t initial_samples_needed,
+	                           int channel,
+	                           cacheid_t& new_cacheid);
 
 	//! Get next buffer.
 	//! Returns the next buffer for reading based on cache id.
@@ -78,9 +81,9 @@ public:
 	//! \param id The cache id to read from.
 	//! \param [out] size The size of the returned buffer.
 	//! \return A pointer to the buffer.
-	sample_t* next(cacheid_t id, std::size_t &size);
+	gsl::owner<sample_t*> next(cacheid_t id, std::size_t &size);
 
-	//! Returns true iff the next chunk of the supplied id has been read from disk.
+	//! Returns true iff next chunk of the supplied id has been read from disk.
 	bool isReady(cacheid_t id);
 
 	//! Unregister cache entry.
@@ -103,10 +106,10 @@ public:
 	bool isAsyncMode() const;
 
 private:
-	std::size_t framesize{0};
-	sample_t* nodata{nullptr};
-	std::size_t nodata_framesize{0};
-	std::size_t chunk_size{0};
+	std::size_t framesize{};
+	gsl::owner<sample_t*> nodata{};
+	std::size_t nodata_framesize{};
+	std::size_t chunk_size{};
 	std::list<std::unique_ptr<sample_t[]>> nodata_dirty;
 
 	AudioCacheIDManager id_manager;

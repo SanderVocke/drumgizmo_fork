@@ -122,6 +122,7 @@ EXTRA_DIST = \
 	midimapper.h \
 	nolocale.h \
 	notifier.h \
+	owner.h \
 	path.h \
 	platform.h \
 	powerlist.h \

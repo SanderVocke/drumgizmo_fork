@@ -26,13 +26,13 @@
  */
 #pragma once
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <vector>
-
-#include <audiotypes.h>
-
 #include <mutex>
+
+#include "audiotypes.h"
+#include "owner.h"
 
 class AudioCacheFile;
 
@@ -49,8 +49,8 @@ struct cache_t
 	size_t channel{0};
 	size_t pos{0}; //< File position
 	volatile bool ready{false};
-	sample_t* front{nullptr};
-	sample_t* back{nullptr};
+	gsl::owner<sample_t*> front{nullptr};
+	gsl::owner<sample_t*> back{nullptr};
 	size_t localpos{0}; //< Intra buffer (front) position.
 
 	sample_t* preloaded_samples{nullptr}; // nullptr means preload buffer not active.
