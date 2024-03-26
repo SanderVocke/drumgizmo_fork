@@ -36,7 +36,7 @@
 #include "audiocachefile.h"
 #include "audiocacheidmanager.h"
 
-class CacheEvent;
+struct CacheEvent;
 
 class AudioCacheEventHandler
 	: protected Thread
@@ -71,7 +71,7 @@ public:
 	void pushLoadNextEvent(AudioCacheFile* afile, size_t channel_index,
 	                       size_t pos, sample_t* buffer,
 	                       volatile bool* ready);
-	void pushCloseEvent(cacheid_t id);
+	void pushCloseEvent(cacheid_t cacheid);
 
 	void setChunkSize(size_t chunksize);
 	size_t getChunkSize() const;
@@ -81,13 +81,13 @@ public:
 protected:
 	void clearEvents();
 
-	void handleLoadNextEvent(CacheEvent& cache_event);
+	void handleLoadNextEvent(CacheEvent& cache_event) const;
 
 	//! Lock the mutex and calls handleCloseCache
 	void handleCloseEvent(CacheEvent& cache_event);
 
 	//! Close decrease the file ref and release the cache id.
-	void handleCloseCache(cacheid_t id);
+	void handleCloseCache(cacheid_t cacheid);
 
 	void handleEvent(CacheEvent& cache_event);
 

@@ -36,25 +36,30 @@
 
 class AudioCacheFile;
 
-#define CACHE_DUMMYID -2
-#define CACHE_NOID -1
+using cacheid_t = int;
 
-typedef int cacheid_t;
+constexpr cacheid_t CACHE_DUMMYID{-2};
+constexpr cacheid_t CACHE_NOID{-1};
 
-struct cache_t
+class CacheBuffer
 {
-	cacheid_t id{CACHE_NOID}; //< Current id of this cache_t. CACHE_NOID means not in use.
+public:
+	void allocBack(std::size_t chunk_size);
+	void deleteChunks() const;
+	void swap() noexcept;
 
-	AudioCacheFile* afile{nullptr};
-	size_t channel{0};
-	size_t pos{0}; //< File position
+	cacheid_t id{CACHE_NOID}; //< Current id of this CacheBuffer. CACHE_NOID means not in use.
+
+	AudioCacheFile* afile{};
+	size_t channel{};
+	size_t pos{}; //< File position
 	volatile bool ready{false};
-	gsl::owner<sample_t*> front{nullptr};
-	gsl::owner<sample_t*> back{nullptr};
-	size_t localpos{0}; //< Intra buffer (front) position.
+	gsl::owner<sample_t*> front{};
+	gsl::owner<sample_t*> back{};
+	size_t localpos{}; //< Intra buffer (front) position.
 
-	sample_t* preloaded_samples{nullptr}; // nullptr means preload buffer not active.
-	size_t preloaded_samples_size{0};
+	sample_t* preloaded_samples{}; // nullptr means preload buffer not active.
+	size_t preloaded_samples_size{};
 };
 
 class AudioCacheIDManager
@@ -71,16 +76,16 @@ public:
 
 	//! Get the cache object connected with the specified cacheid.
 	//! Note: The cacheid MUST be active.
-	cache_t& getCache(cacheid_t id);
+	CacheBuffer& getCache(cacheid_t cacheid);
 
 	//! Reserve a new cache object and return its cacheid.
 	//! The contents of the supplied cache object will be copied to the new
 	//! cache object.
-	cacheid_t registerID(const cache_t& cache);
+	cacheid_t registerID(const CacheBuffer& cache);
 
 	//! Release a cache object and its correseponding cacheid.
 	//! After this call the cacheid can no longer be used.
-	void releaseID(cacheid_t id);
+	void releaseID(cacheid_t cacheid);
 
 protected:
 	// For AudioCacheEventHandler
@@ -89,6 +94,6 @@ protected:
 
 	std::mutex mutex;
 
-	std::vector<cache_t> id2cache;
+	std::vector<CacheBuffer> id2cache;
 	std::vector<cacheid_t> available_ids;
 };

@@ -34,13 +34,14 @@
 #include "audiocache.h"
 #include "audiocacheidmanager.h"
 
-enum class EventType {
+enum class EventType
+{
 	LoadNext,
 	Close,
 };
 
-class CacheEvent {
-public:
+struct CacheEvent
+{
 	EventType event_type;
 
 	// For close event:
@@ -63,9 +64,9 @@ AudioCacheEventHandler::~AudioCacheEventHandler()
 	clearEvents();
 
 	auto active_ids = id_manager.getActiveIDs();
-	for(auto id : active_ids)
+	for(auto active_id : active_ids)
 	{
-		handleCloseCache(id);
+		handleCloseCache(active_id);
 	}
 }
 
@@ -119,28 +120,28 @@ void AudioCacheEventHandler::pushLoadNextEvent(AudioCacheFile* afile,
                                                size_t pos, sample_t* buffer,
                                                volatile bool* ready)
 {
-	CacheEvent cache_event;
+	CacheEvent cache_event{};
 	cache_event.event_type = EventType::LoadNext;
 	cache_event.pos = pos;
 	cache_event.afile = afile;
 
-	CacheChannel c{};
-	c.channel_index = channel_index;
-	c.samples = buffer;
+	CacheChannel cache_channel{};
+	cache_channel.channel_index = channel_index;
+	cache_channel.samples = buffer;
 
 	*ready = false;
-	c.ready = ready;
+	cache_channel.ready = ready;
 
-	cache_event.channels.insert(cache_event.channels.end(), c);
+	cache_event.channels.insert(cache_event.channels.end(), cache_channel);
 
 	pushEvent(cache_event);
 }
 
-void AudioCacheEventHandler::pushCloseEvent(cacheid_t id)
+void AudioCacheEventHandler::pushCloseEvent(cacheid_t cacheid)
 {
-	CacheEvent cache_event;
+	CacheEvent cache_event{};
 	cache_event.event_type = EventType::Close;
-	cache_event.id = id;
+	cache_event.id = cacheid;
 
 	pushEvent(cache_event);
 }
@@ -197,7 +198,7 @@ void AudioCacheEventHandler::clearEvents()
 	eventqueue.clear();
 }
 
-void AudioCacheEventHandler::handleLoadNextEvent(CacheEvent& cache_event)
+void AudioCacheEventHandler::handleLoadNextEvent(CacheEvent& cache_event) const
 {
 	assert(cache_event.afile); // Assert that we have an audio file
 
@@ -211,20 +212,21 @@ void AudioCacheEventHandler::handleCloseEvent(CacheEvent& cache_event)
 	handleCloseCache(cache_event.id);
 }
 
-void AudioCacheEventHandler::handleCloseCache(cacheid_t id)
+void AudioCacheEventHandler::handleCloseCache(cacheid_t cacheid)
 {
-	auto& cache = id_manager.getCache(id);
+	auto& cache = id_manager.getCache(cacheid);
 
 	// Only close the file if we have also opened it.
-	if(cache.afile)
+	if(cache.afile != nullptr)
 	{
 		files.releaseFile(cache.afile->getFilename());
 	}
 
-	delete[] cache.front;
-	delete[] cache.back;
+	//delete[] cache.front;
+	//delete[] cache.back;
+	cache.deleteChunks();
 
-	id_manager.releaseID(id);
+	id_manager.releaseID(cacheid);
 }
 
 void AudioCacheEventHandler::handleEvent(CacheEvent& cache_event)

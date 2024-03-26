@@ -91,8 +91,8 @@ gsl::owner<sample_t*> AudioCache::open(const AudioFile& file,
 		return nodata;
 	}
 
-	// Get the cache_t connected with the registered id.
-	cache_t& cache = id_manager.getCache(new_cacheid);
+	// Get the CacheBuffer connected with the registered id.
+	CacheBuffer& cache = id_manager.getCache(new_cacheid);
 
 	cache.afile = nullptr; // File is opened when needed.
 	cache.channel = channel;
@@ -140,7 +140,7 @@ gsl::owner<sample_t*> AudioCache::open(const AudioFile& file,
 
 		if(cache.back == nullptr)
 		{
-			cache.back = new sample_t[chunk_size];
+			cache.allocBack(chunk_size);
 		}
 
 		event_handler.pushLoadNextEvent(cache.afile, cache.channel, cache.pos,
@@ -159,7 +159,7 @@ gsl::owner<sample_t*> AudioCache::next(cacheid_t cacheid, std::size_t& size)
 		return nodata;
 	}
 
-	cache_t& cache = id_manager.getCache(cacheid);
+	CacheBuffer& cache = id_manager.getCache(cacheid);
 
 	if(cache.preloaded_samples != nullptr)
 	{
@@ -210,7 +210,7 @@ gsl::owner<sample_t*> AudioCache::next(cacheid_t cacheid, std::size_t& size)
 	}
 
 	// Swap buffers
-	std::swap(cache.front, cache.back);
+	cache.swap();
 
 	// Next time we go here we have already read the first frame.
 	cache.localpos = size;
@@ -224,7 +224,7 @@ gsl::owner<sample_t*> AudioCache::next(cacheid_t cacheid, std::size_t& size)
 		// Do we have a back buffer to read into?
 		if(cache.back == nullptr)
 		{
-			cache.back = new sample_t[chunk_size];
+			cache.allocBack(chunk_size);
 		}
 
 		event_handler.pushLoadNextEvent(cache.afile, cache.channel, cache.pos,
@@ -243,7 +243,7 @@ bool AudioCache::isReady(cacheid_t cacheid)
 		return true;
 	}
 
-	const cache_t& cache = id_manager.getCache(cacheid);
+	const CacheBuffer& cache = id_manager.getCache(cacheid);
 	return cache.ready;
 }
 

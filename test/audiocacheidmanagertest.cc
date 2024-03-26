@@ -52,39 +52,39 @@ public:
 		TestableAudioCacheIDManager manager;
 		manager.init(2);
 
-		cache_t c1; c1.afile = (AudioCacheFile*)1;
+		CacheBuffer c1; c1.afile = (AudioCacheFile*)1;
 		auto id1 = manager.registerID(c1);
 		uUNIT_ASSERT(id1 != CACHE_DUMMYID);
 		uUNIT_ASSERT(id1 != CACHE_NOID);
 		uUNIT_ASSERT_EQUAL(1, manager.getAvailableIDs());
 
-		cache_t c2; c2.afile = (AudioCacheFile*)2;
+		CacheBuffer c2; c2.afile = (AudioCacheFile*)2;
 		auto id2 = manager.registerID(c2);
 		uUNIT_ASSERT(id2 != CACHE_DUMMYID);
 		uUNIT_ASSERT(id2 != CACHE_NOID);
 		uUNIT_ASSERT_EQUAL(0, manager.getAvailableIDs());
 
-		cache_t c3; c3.afile = (AudioCacheFile*)3;
+		CacheBuffer c3; c3.afile = (AudioCacheFile*)3;
 		auto id3 = manager.registerID(c3);
 		uUNIT_ASSERT(id3 == CACHE_DUMMYID);
 		uUNIT_ASSERT_EQUAL(0, manager.getAvailableIDs());
 
-		cache_t& tc1 = manager.getCache(id1);
+		CacheBuffer& tc1 = manager.getCache(id1);
 		uUNIT_ASSERT_EQUAL(c1.afile, tc1.afile);
 
-		cache_t& tc2 = manager.getCache(id2);
+		CacheBuffer& tc2 = manager.getCache(id2);
 		uUNIT_ASSERT_EQUAL(c2.afile, tc2.afile);
 
 		manager.releaseID(id1);
 		uUNIT_ASSERT_EQUAL(1, manager.getAvailableIDs());
 
-		cache_t c4; c4.afile = (AudioCacheFile*)4;
+		CacheBuffer c4; c4.afile = (AudioCacheFile*)4;
 		auto id4 = manager.registerID(c4);
 		uUNIT_ASSERT(id4 != CACHE_DUMMYID);
 		uUNIT_ASSERT(id4 != CACHE_NOID);
 		uUNIT_ASSERT_EQUAL(0, manager.getAvailableIDs());
 
-		cache_t& tc4 = manager.getCache(id4);
+		CacheBuffer& tc4 = manager.getCache(id4);
 		uUNIT_ASSERT_EQUAL(c4.afile, tc4.afile);
 
 		manager.releaseID(id2);
