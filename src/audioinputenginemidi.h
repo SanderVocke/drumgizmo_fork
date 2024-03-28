@@ -37,7 +37,7 @@ class AudioInputEngineMidi
 	: public AudioInputEngine
 {
 public:
-	AudioInputEngineMidi();
+	AudioInputEngineMidi() = default;
 	virtual ~AudioInputEngineMidi() = default;
 
 	virtual bool init(const Instruments &instruments) = 0;
@@ -51,14 +51,15 @@ public:
 	virtual void run(size_t pos, size_t len, std::vector<event_t>& events) = 0;
 	virtual void post() = 0;
 
-	virtual bool loadMidiMap(const std::string& file, const Instruments& i);
+	virtual bool loadMidiMap(const std::string& midimap_file,
+	                         const Instruments& i);
 
 	std::string getMidimapFile() const;
 
 	bool isValid() const;
 
-	void processNote(const std::uint8_t* note_data,
-	                 std::size_t note_data_size,
+	void processNote(const std::uint8_t* midi_buffer,
+	                 std::size_t midi_buffer_length,
 	                 std::size_t offset,
 	                 std::vector<event_t>& events);
 
@@ -67,7 +68,7 @@ protected:
 
 private:
 	std::string midimap;
-	bool is_valid;
+	bool is_valid{false};
 
-	ConfigFile refs;
+	ConfigFile refs{REFSFILE};
 };

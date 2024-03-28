@@ -38,8 +38,6 @@
 #include "domloader.h"
 #include "directory.h"
 
-#define REFSFILE "refs.conf"
-
 DrumKitLoader::DrumKitLoader(Settings& settings, DrumKit& kit,
                              AudioInputEngine& ie,
                              Random& rand,

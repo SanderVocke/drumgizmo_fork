@@ -46,8 +46,6 @@
 #include "inputprocessor.h"
 #include "zrwrapper.h"
 
-#define REFSFILE "refs.conf"
-
 class DrumGizmo
 {
 public:

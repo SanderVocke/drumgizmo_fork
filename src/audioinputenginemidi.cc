@@ -28,26 +28,20 @@
 
 #include "midimapparser.h"
 
-#include "drumgizmo.h"
+#include <cassert>
 
 #include <hugin.hpp>
 
-AudioInputEngineMidi::AudioInputEngineMidi()
-	: refs(REFSFILE)
-{
-	is_valid = false;
-}
-
-bool AudioInputEngineMidi::loadMidiMap(const std::string& file,
+bool AudioInputEngineMidi::loadMidiMap(const std::string& midimap_file,
                                        const Instruments& instruments)
 {
-	std::string f = file;
+	std::string file = midimap_file;
 
 	if(refs.load())
 	{
 		if(file.size() > 1 && file[0] == '@')
 		{
-			f = refs.getValue(file.substr(1));
+			file = refs.getValue(file.substr(1));
 		}
 	}
 	else
@@ -58,16 +52,16 @@ bool AudioInputEngineMidi::loadMidiMap(const std::string& file,
 	midimap = "";
 	is_valid = false;
 
-	DEBUG(mmap, "loadMidiMap(%s, i.size() == %d)\n", f.c_str(),
+	DEBUG(mmap, "loadMidiMap(%s, i.size() == %d)\n", file.c_str(),
 	      (int)instruments.size());
 
-	if(f == "")
+	if(file.empty())
 	{
 		return false;
 	}
 
 	MidiMapParser midimap_parser;
-	if(!midimap_parser.parseFile(f))
+	if(!midimap_parser.parseFile(file))
 	{
 		return false;
 	}
@@ -75,7 +69,7 @@ bool AudioInputEngineMidi::loadMidiMap(const std::string& file,
 	instrmap_t instrmap;
 	for(size_t i = 0; i < instruments.size(); i++)
 	{
-		instrmap[instruments[i]->getName()] = i;
+		instrmap[instruments[i]->getName()] = static_cast<int>(i);
 	}
 
 	mmap.swap(instrmap, midimap_parser.midimap);
@@ -97,12 +91,12 @@ bool AudioInputEngineMidi::isValid() const
 }
 
 // Note types:
-static const std::uint8_t NoteOff = 0x80;
-static const std::uint8_t NoteOn = 0x90;
-static const std::uint8_t NoteAftertouch = 0xA0;
+constexpr std::uint8_t NoteOff{0x80};
+constexpr std::uint8_t NoteOn{0x90};
+constexpr std::uint8_t NoteAftertouch{0xA0};
 
 // Note type mask:
-static int const NoteMask = 0xF0;
+constexpr std::uint8_t NoteMask{0xF0};
 
 void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
                                        std::size_t midi_buffer_length,
@@ -114,13 +108,13 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 		return;
 	}
 
-	auto key = midi_buffer[1];
-	auto velocity = midi_buffer[2];
+	auto key = midi_buffer[1]; // NOLINT - span
+	auto velocity = midi_buffer[2]; // NOLINT - span
 	auto instrument_idx = mmap.lookup(key);
 	auto instruments = mmap.lookup(key);
 	for(const auto& instrument_idx : instruments)
 	{
-		switch(midi_buffer[0] & NoteMask)
+		switch(midi_buffer[0] & NoteMask) // NOLINT - span
 		{
 		case NoteOff:
 			// Ignore for now
@@ -129,8 +123,12 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 		case NoteOn:
 			if(velocity != 0)
 			{
+				constexpr float lower_offset{0.5f};
+				constexpr float midi_velocity_max{127.0f};
 				// maps velocities to [.5/127, 126.5/127]
-				auto centered_velocity = (velocity-.5f)/127.0f;
+				assert(velocity <= 127); // MIDI only support up to 127
+				auto centered_velocity =
+					(static_cast<float>(velocity) - lower_offset) / midi_velocity_max;
 				events.push_back({EventType::OnSet, (std::size_t)instrument_idx,
 				                  offset, centered_velocity});
 			}
