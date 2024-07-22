@@ -27,11 +27,13 @@
 #pragma once
 
 #include <string>
+#include <map>
 
 #include "audioinputengine.h"
 #include "midimapper.h"
 #include "instrument.h"
 #include "configfile.h"
+#include "instrumentstate.h"
 
 class AudioInputEngineMidi
 	: public AudioInputEngine
@@ -68,9 +70,8 @@ protected:
 
 private:
 	std::string midimap;
+	std::map<int, InstrumentState> instrument_states;
 	bool is_valid{false};
 
 	ConfigFile refs{REFSFILE};
-
-	float positional_information{0.0f};
 };
