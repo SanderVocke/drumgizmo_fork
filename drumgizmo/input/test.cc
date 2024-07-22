@@ -44,6 +44,7 @@ TestInputEngine::~TestInputEngine()
 
 bool TestInputEngine::init(const Instruments& instruments)
 {
+	instrument_states.clear();
 	return true;
 }
 

@@ -119,7 +119,7 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 		{
 			auto key = midi_buffer[1]; // NOLINT - span
 			auto velocity = midi_buffer[2]; // NOLINT - span
-			auto instruments = mmap.lookup(key);
+			auto instruments = mmap.lookup(key, MapFrom::Note, MapTo::PlayInstrument);
 			for(const auto& instrument_idx : instruments)
 			{
 				if(velocity != 0)
@@ -130,8 +130,16 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 					assert(velocity <= 127); // MIDI only support up to 127
 					auto centered_velocity =
 						(static_cast<float>(velocity) - lower_offset) / midi_velocity_max;
+					float position = 0.0f;
+					float openness = 0.0f; // TODO
+					auto instr_it = instrument_states.find(instrument_idx);
+					if(instr_it != instrument_states.end())
+					{
+						position = instr_it->second.position;
+						openness = instr_it->second.openness;
+					}
 					events.push_back({EventType::OnSet, (std::size_t)instrument_idx,
-					                  offset, centered_velocity, positional_information});
+					                  offset, centered_velocity, position});
 				}
 			}
 		}
@@ -141,7 +149,7 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 		{
 			auto key = midi_buffer[1]; // NOLINT - span
 			auto velocity = midi_buffer[2]; // NOLINT - span
-			auto instruments = mmap.lookup(key);
+			auto instruments = mmap.lookup(key, MapFrom::Note, MapTo::PlayInstrument);
 			for(const auto& instrument_idx : instruments)
 			{
 				if(velocity > 0)
@@ -157,6 +165,43 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 		{
 			auto controller_number = midi_buffer[1]; // NOLINT - span
 			auto value = midi_buffer[2]; // NOLINT - span
+
+			// TODO: cross-map from cc to play, etc.
+			// TODO: don't lookup twice
+			auto instruments_position = mmap.lookup(controller_number,
+			                                        MapFrom::CC,
+													MapTo::InstrumentState,
+													InstrumentStateKind::Position);
+			auto instruments_position = mmap.lookup(controller_number,
+			                                        MapFrom::CC,
+													MapTo::InstrumentState,
+													InstrumentStateKind::Openness);
+			for(const auto& instrument_idx : instruments_position)
+			{
+
+
+				if(velocity != 0)
+				{
+					constexpr float lower_offset{0.5f};
+					constexpr float midi_velocity_max{127.0f};
+					// maps velocities to [.5/127, 126.5/127]
+					assert(velocity <= 127); // MIDI only support up to 127
+					auto centered_velocity =
+						(static_cast<float>(velocity) - lower_offset) / midi_velocity_max;
+					float position = 0.0f;
+					float openness = 0.0f; // TODO
+					auto instr_it = instrument_states.find(instrument_idx);
+					if(instr_it != instrument_states.end())
+					{
+						position = instr_it->second.position;
+						openness = instr_it->second.openness;
+					}
+					events.push_back({EventType::OnSet, (std::size_t)instrument_idx,
+					                  offset, centered_velocity, position});
+				}
+			}
+
+
 			if(controller_number == 16) // positional information
 			{
 				// Store value for use in next NoteOn event.
@@ -167,7 +212,4 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 			}
 		}
 	}
-
-	// Clear cached positional information.
-	positional_information = 0.0f;
 }
