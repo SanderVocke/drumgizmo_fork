@@ -26,13 +26,11 @@
  */
 #include "drumgizmo.h"
 
-#include <cmath>
 #include <cstdio>
 #include <cassert>
 #include <cstring>
-#include <mutex>
 
-#include <audiotypes.h>
+#include "audiotypes.h"
 #include <config.h>
 
 #include <hugin.hpp>
@@ -391,7 +389,7 @@ void DrumGizmo::getSamples(int ch, int pos, sample_t* s, size_t sz)
 
 		{
 			// TODO: We should make all audiofiles reference counted and get rid of this lock.
-			std::lock_guard<std::mutex> guard(af.mutex);
+			const std::lock_guard<std::mutex> guard(af.mutex);
 
 			renderSampleEvent(sample_event, pos, s, sz);
 

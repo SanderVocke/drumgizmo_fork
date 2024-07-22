@@ -26,7 +26,7 @@
  */
 #pragma once
 
-#include <configfile.h>
+#include "configfile.h"
 
 class DrumgizmoConfig
 	: public ConfigFile

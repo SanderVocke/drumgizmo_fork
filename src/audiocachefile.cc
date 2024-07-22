@@ -26,23 +26,19 @@
  */
 #include "audiocachefile.h"
 
-#include <assert.h>
+#include <cassert>
+#include <cstring>
+#include <functional>
 
 #include <hugin.hpp>
-
-#include <cstring>
-
-#include "audiocache.h"
 
 AudioCacheFile::AudioCacheFile(const std::string& filename,
                                std::vector<sample_t>& read_buffer)
 	: filename(filename)
 	, read_buffer(read_buffer)
 {
-	std::memset(&sf_info, 0, sizeof(SF_INFO));
-
 	fh = sf_open(filename.c_str(), SFM_READ, &sf_info);
-	if(!fh)
+	if(fh == nullptr)
 	{
 		ERR(audiofile,"SNDFILE Error (%s): %s\n",
 		    filename.c_str(), sf_strerror(fh));
@@ -57,7 +53,7 @@ AudioCacheFile::AudioCacheFile(const std::string& filename,
 
 AudioCacheFile::~AudioCacheFile()
 {
-	if(fh)
+	if(fh != nullptr)
 	{
 		sf_close(fh);
 		fh = nullptr;
@@ -80,10 +76,10 @@ size_t AudioCacheFile::getChannelCount() const
 }
 
 void AudioCacheFile::readChunk(const CacheChannels& channels,
-                               size_t pos, size_t num_samples)
+                               std::size_t pos, std::size_t num_samples)
 {
 	//assert(fh != nullptr); // File handle must never be nullptr
-	if(!fh)
+	if(fh == nullptr)
 	{
 		return;
 	}
@@ -95,9 +91,9 @@ void AudioCacheFile::readChunk(const CacheChannels& channels,
 		return;
 	}
 
-	sf_seek(fh, pos, SEEK_SET);
+	sf_seek(fh, static_cast<sf_count_t>(pos), SEEK_SET);
 
-	size_t size = sf_info.frames - pos;
+	auto size = sf_info.frames - pos;
 	if(size > num_samples)
 	{
 		size = num_samples;
@@ -108,38 +104,42 @@ void AudioCacheFile::readChunk(const CacheChannels& channels,
 		read_buffer.resize(size * sf_info.channels);
 	}
 
-	size_t read_size = sf_readf_float(fh, read_buffer.data(), size);
-	(void)read_size;
+	const size_t read_size = sf_readf_float(fh, read_buffer.data(),
+	                                        static_cast<sf_count_t>(size));
+	assert(read_size == size);
 
-	for(auto it = channels.begin(); it != channels.end(); ++it)
+	for(const auto& channel : channels)
 	{
-		size_t channel = it->channel;
-		sample_t* data = it->samples;
+		auto channel_index = channel.channel_index;
+		auto* data = channel.samples;
 		for (size_t i = 0; i < size; ++i)
 		{
-			data[i] = read_buffer[(i * sf_info.channels) + channel];
+			data[i] = read_buffer[(i * sf_info.channels) + channel_index]; // NOLINT: will be fixed with std::span
 		}
 	}
 
-	for(auto it = channels.begin(); it != channels.end(); ++it)
+	for(const auto & channel : channels)
 	{
-		*(it->ready) = true;
+		*(channel.ready) = true;
 	}
 }
 
 AudioCacheFile& AudioCacheFiles::getFile(const std::string& filename)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	const std::lock_guard<std::mutex> lock(mutex);
 
-	auto it = audiofiles.find(filename);
-	if(it == audiofiles.end())
+	auto audiofile_it = audiofiles.find(filename);
+	if(audiofile_it == audiofiles.end())
 	{
 		// Construct a new AudioCacheFile in place. The in place construction is relevant.
-		it = audiofiles.emplace(std::piecewise_construct, std::make_tuple(filename),
-		                        std::make_tuple(filename, std::ref(read_buffer))).first;
+		audiofile_it =
+			audiofiles.emplace(std::piecewise_construct,
+			                   std::make_tuple(filename),
+			                   std::make_tuple(filename,
+			                                   std::ref(read_buffer))).first; // FIXME: This must be possible to do in a more easy-to-read way!
 	}
 
-	auto& cache_audio_file = it->second;
+	auto& cache_audio_file = audiofile_it->second;
 
 	// Increase ref count.
 	++cache_audio_file.ref;
@@ -149,22 +149,22 @@ AudioCacheFile& AudioCacheFiles::getFile(const std::string& filename)
 
 void AudioCacheFiles::releaseFile(const std::string& filename)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	const std::lock_guard<std::mutex> lock(mutex);
 
-	auto it = audiofiles.find(filename);
-	if(it == audiofiles.end())
+	auto audiofile_it = audiofiles.find(filename);
+	if(audiofile_it == audiofiles.end())
 	{
 		assert(false); // This should never happen!
 		return; // not open
 	}
 
-	auto& audiofile = it->second;
+	auto& audiofile = audiofile_it->second;
 
 	assert(audiofile.ref); // If ref is not > 0 it shouldn't be in the map.
 
 	--audiofile.ref;
 	if(audiofile.ref == 0)
 	{
-		audiofiles.erase(it);
+		audiofiles.erase(audiofile_it);
 	}
 }

@@ -30,6 +30,8 @@
 #include <map>
 #include <fstream>
 
+static const std::string REFSFILE{"refs.conf"};
+
 class ConfigFile
 {
 public:

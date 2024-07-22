@@ -26,28 +26,23 @@
  */
 #include "audioinputenginemidi.h"
 
+#include "instrument.h"
 #include "midimapparser.h"
 
-#include "drumgizmo.h"
+#include <cassert>
 
 #include <hugin.hpp>
 
-AudioInputEngineMidi::AudioInputEngineMidi()
-	: refs(REFSFILE)
-{
-	is_valid = false;
-}
-
-bool AudioInputEngineMidi::loadMidiMap(const std::string& file,
+bool AudioInputEngineMidi::loadMidiMap(const std::string& midimap_file,
                                        const Instruments& instruments)
 {
-	std::string f = file;
+	std::string file = midimap_file;
 
 	if(refs.load())
 	{
 		if(file.size() > 1 && file[0] == '@')
 		{
-			f = refs.getValue(file.substr(1));
+			file = refs.getValue(file.substr(1));
 		}
 	}
 	else
@@ -58,16 +53,16 @@ bool AudioInputEngineMidi::loadMidiMap(const std::string& file,
 	midimap = "";
 	is_valid = false;
 
-	DEBUG(mmap, "loadMidiMap(%s, i.size() == %d)\n", f.c_str(),
+	DEBUG(mmap, "loadMidiMap(%s, i.size() == %d)\n", file.c_str(),
 	      (int)instruments.size());
 
-	if(f == "")
+	if(file.empty())
 	{
 		return false;
 	}
 
 	MidiMapParser midimap_parser;
-	if(!midimap_parser.parseFile(f))
+	if(!midimap_parser.parseFile(file))
 	{
 		return false;
 	}
@@ -75,7 +70,8 @@ bool AudioInputEngineMidi::loadMidiMap(const std::string& file,
 	instrmap_t instrmap;
 	for(size_t i = 0; i < instruments.size(); i++)
 	{
-		instrmap[instruments[i]->getName()] = i;
+		instrmap[instruments[i]->getName()] = static_cast<int>(i);
+		instrument_states[i] = InstrumentState{};
 	}
 
 	mmap.swap(instrmap, midimap_parser.midimap);
@@ -97,16 +93,13 @@ bool AudioInputEngineMidi::isValid() const
 }
 
 // Note types:
-static const std::uint8_t NoteOff = 0x80;
-static const std::uint8_t NoteOn = 0x90;
-static const std::uint8_t NoteAftertouch = 0xA0;
-static const std::uint8_t ControlChange = 0xB0;
+constexpr std::uint8_t NoteOff{0x80};
+constexpr std::uint8_t NoteOn{0x90};
+constexpr std::uint8_t NoteAftertouch{0xA0};
+constexpr std::uint8_t ControlChange{0xB0};
 
 // Note type mask:
-static const std::uint8_t TypeMask = 0xF0;
-
-// See:
-// https://www.midi.org/specifications-old/item/table-1-summary-of-midi-message
+constexpr std::uint8_t NoteMask{0xF0};
 
 void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
                                        std::size_t midi_buffer_length,
@@ -118,7 +111,7 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 		return;
 	}
 
-	switch(midi_buffer[0] & TypeMask)
+	switch(midi_buffer[0] & NoteMask) // NOLINT - span
 	{
 	case NoteOff:
 		// Ignore for now
@@ -126,17 +119,30 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 
 	case NoteOn:
 		{
-			auto key = midi_buffer[1];
-			auto velocity = midi_buffer[2];
-			auto instruments = mmap.lookup(key);
+			auto key = midi_buffer[1]; // NOLINT - span
+			auto velocity = midi_buffer[2]; // NOLINT - span
+			auto map_entries = mmap.lookup(key, MapFrom::Note, MapTo::PlayInstrument);
+			auto instruments = mmap.lookup_instruments(map_entries);
 			for(const auto& instrument_idx : instruments)
 			{
 				if(velocity != 0)
 				{
+					constexpr float lower_offset{0.5f};
+					constexpr float midi_velocity_max{127.0f};
 					// maps velocities to [.5/127, 126.5/127]
-					auto centered_velocity = (velocity-.5f)/127.0f;
+					assert(velocity <= 127); // MIDI only support up to 127
+					auto centered_velocity =
+						(static_cast<float>(velocity) - lower_offset) / midi_velocity_max;
+					float position = 0.0f;
+					float openness = 0.0f; // TODO
+					auto instr_it = instrument_states.find(instrument_idx);
+					if(instr_it != instrument_states.end())
+					{
+						position = instr_it->second.position;
+						openness = instr_it->second.openness;
+					}
 					events.push_back({EventType::OnSet, (std::size_t)instrument_idx,
-					                  offset, centered_velocity, positional_information});
+					                  offset, centered_velocity, position, openness});
 				}
 			}
 		}
@@ -144,15 +150,16 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 
 	case NoteAftertouch:
 		{
-			auto key = midi_buffer[1];
-			auto velocity = midi_buffer[2];
-			auto instruments = mmap.lookup(key);
+			auto key = midi_buffer[1]; // NOLINT - span
+			auto velocity = midi_buffer[2]; // NOLINT - span
+			auto map_entries = mmap.lookup(key, MapFrom::Note, MapTo::PlayInstrument);
+			auto instruments = mmap.lookup_instruments(map_entries);
 			for(const auto& instrument_idx : instruments)
 			{
 				if(velocity > 0)
 				{
 					events.push_back({EventType::Choke, (std::size_t)instrument_idx,
-					                  offset, .0f, .0f});
+					                  offset, .0f, .0f, .0f});
 				}
 			}
 		}
@@ -160,19 +167,35 @@ void AudioInputEngineMidi::processNote(const std::uint8_t* midi_buffer,
 
 	case ControlChange:
 		{
-			auto controller_number = midi_buffer[1];
-			auto value = midi_buffer[2];
-			if(controller_number == 16) // positional information
-			{
-				// Store value for use in next NoteOn event.
-				positional_information = value / 127.0f;
+			auto controller_number = midi_buffer[1]; // NOLINT - span
+			auto value = midi_buffer[2]; // NOLINT - span
 
-				// Return here to prevent reset of cached positional information.
-				return;
+			// TODO: cross-map from cc to play, etc.
+			auto map_entries = mmap.lookup(controller_number,
+			                               MapFrom::CC,
+										   MapTo::InstrumentState);
+			for(const auto& entry : map_entries)
+			{
+				auto instrument_idx = mmap.lookup_instrument(entry.instrument_name);
+				if (instrument_idx >= 0) {
+					auto state_it = instrument_states.find(instrument_idx);
+					if (state_it != instrument_states.end()) {
+						InstrumentState &state = state_it->second;
+						auto const max = (float) entry.state_max;
+						auto const min = (float) entry.state_min;
+						auto const in_clamped = std::min(std::max((float)value, std::min(min, max)), std::max(min, max));
+						float fvalue = (in_clamped - min) / (max - min);
+						if (entry.maybe_instrument_state_kind == InstrumentStateKind::Openness) {
+							state_it->second.openness = fvalue;
+						}
+						else if (entry.maybe_instrument_state_kind == InstrumentStateKind::Position) {
+							state_it->second.position = fvalue;
+						}
+					}
+				}
 			}
+
+			// TODO: the old version deleted the position cache(s) here
 		}
 	}
-
-	// Clear cached positional information.
-	positional_information = 0.0f;
 }

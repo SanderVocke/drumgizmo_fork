@@ -44,13 +44,7 @@ struct PowerListItem
 		return this->power < power;
 	}
 };
-class PowerListItems
-	: public std::vector<PowerListItem>
-{
-public:
-	float getMaxPower() const;
-	float getMinPower() const;
-};
+using PowerListItems = std::vector<PowerListItem>;
 
 class PowerList
 {
@@ -60,7 +54,7 @@ public:
 	void add(Sample* s);
 	void finalise(); ///< Call this when no more samples will be added.
 
-	const PowerListItems& getPowerListItems(float position) const;
+	const PowerListItems& getPowerListItems() const;
 
 	float getMaxPower() const;
 	float getMinPower() const;

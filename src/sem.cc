@@ -28,8 +28,8 @@
 
 #include <hugin.hpp>
 #include <limits>
-#include <assert.h>
-#include <string.h>
+#include <cassert>
+#include <cstring>
 #include <chrono>
 #include <thread>
 
@@ -37,8 +37,8 @@
 
 #if DG_PLATFORM != DG_PLATFORM_WINDOWS
 #include <semaphore.h>
-#include <errno.h>
-#include <stdio.h>
+#include <cerrno>
+#include <cstdio>
 #include <sys/time.h>
 #endif
 

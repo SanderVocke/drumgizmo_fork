@@ -3,7 +3,7 @@
  *            inputprocessor.cc
  *
  *  Sat Apr 23 20:39:30 CEST 2016
- *  Copyright 2016 André Nusser
+ *  Copyright 2016 Andrï¿½ Nusser
  *  andre.nusser@googlemail.com
  ****************************************************************************/
 
@@ -37,7 +37,6 @@
 #include "staminafilter.h"
 #include "velocityfilter.h"
 #include "positionfilter.h"
-
 #include "cpp11fix.h"
 
 class VelocityStorer
@@ -249,11 +248,13 @@ bool InputProcessor::processOnset(event_t& event, std::size_t pos,
 	// Apply directed chokes to mute other instruments if needed
 	applyDirectedChoke(settings, kit, *instr, event, events_ds, pos);
 
-	auto power = instr->getPowers(event.position);
-	const float power_span = power.max - power.min;
-	const float instrument_level = power.min + event.velocity * power_span;
+	auto const power_max = instr->getMaxPower();
+	auto const power_min = instr->getMinPower();
+	float const power_span = power_max - power_min;
+	float const instrument_level = power_min + event.velocity*power_span;
 	// FIXME: bad variable naming of parameters
-	const auto sample = instr->sample(instrument_level, event.position, event.offset + pos);
+	// FIXME: filter for openness?
+	const auto sample = instr->sample(instrument_level, event.position, event.openness, event.offset + pos);
 
 	if(sample == nullptr)
 	{

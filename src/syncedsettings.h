@@ -64,7 +64,7 @@ public:
 		: mutex{}
 		, data{}
 	{
-		std::lock_guard<std::mutex> lock{other.mutex};
+		const std::lock_guard<std::mutex> lock{other.mutex};
 		data = other.data;
 	}
 
@@ -72,7 +72,7 @@ public:
 		: mutex{}
 		, data{}
 	{
-		std::lock_guard<std::mutex> lock{other.mutex};
+		const std::lock_guard<std::mutex> lock{other.mutex};
 		std::swap(data, other.data);
 	}
 
@@ -80,19 +80,19 @@ public:
 	{
 		if (*this != &other)
 		{
-			std::lock_guard<std::mutex> lock{mutex};
-			std::lock_guard<std::mutex> lock2{other.mutex};
+			const std::lock_guard<std::mutex> lock{mutex};
+			const std::lock_guard<std::mutex> lock2{other.mutex};
 			data = other.data;
 		}
 		return *this;
 	}
-	
+
 	Group<T>& operator=(Group<T>&& other)
 	{
 		if (*this != &other)
 		{
-			std::lock_guard<std::mutex> lock{mutex};
-			std::lock_guard<std::mutex> lock2{other.mutex};
+			const std::lock_guard<std::mutex> lock{mutex};
+			const std::lock_guard<std::mutex> lock2{other.mutex};
 			std::swap(data, other.data);
 		}
 		return *this;
@@ -100,7 +100,7 @@ public:
 
 	operator T() const
 	{
-		std::lock_guard<std::mutex> lock{mutex};
+		const std::lock_guard<std::mutex> lock{mutex};
 		return data;
 	}
 };

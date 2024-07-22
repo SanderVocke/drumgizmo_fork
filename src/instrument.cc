@@ -55,12 +55,12 @@ bool Instrument::isValid() const
 }
 
 // FIXME: very bad variable naming of parameters
-const Sample* Instrument::sample(level_t level, float position , std::size_t pos)
+const Sample* Instrument::sample(level_t level, float position , float openness, std::size_t pos)
 {
 	if(version >= VersionStr("2.0"))
 	{
 		// Version 2.0
-		return sample_selection.get(level * mod, position, pos);
+		return sample_selection.get(level * mod, position, openness, pos);
 	}
 	else
 	{
@@ -130,15 +130,27 @@ std::size_t Instrument::getNumberOfFiles() const
 	return audiofiles.size();
 }
 
-Instrument::PowerRange Instrument::getPowers(float position) const
+float Instrument::getMaxPower() const
 {
 	if(version >= VersionStr("2.0"))
 	{
-		return { powerlist.getMaxPower(), powerlist.getMaxPower() };
+		return powerlist.getMaxPower();
 	}
 	else
 	{
-		return { 0.0f, 1.0f };
+		return 1.0f;
+	}
+}
+
+float Instrument::getMinPower() const
+{
+	if(version >= VersionStr("2.0"))
+	{
+		return powerlist.getMinPower();
+	}
+	else
+	{
+		return 0.0f;
 	}
 }
 

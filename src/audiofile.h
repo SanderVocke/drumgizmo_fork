@@ -35,24 +35,26 @@
 #include "audio.h"
 #include "channel.h"
 #include "logger.h"
+#include "owner.h"
 
 class InstrumentChannel;
 
 class AudioFile
 {
 public:
-	AudioFile(const std::string& filename, std::size_t filechannel,
+	AudioFile(std::string filename, std::size_t filechannel,
 	          InstrumentChannel* instrument_channel = nullptr);
 	~AudioFile();
 
-	void load(LogFunction logger, std::size_t sample_limit = std::numeric_limits<std::size_t>::max());
+	void load(const LogFunction& logger,
+	          std::size_t sample_limit = std::numeric_limits<std::size_t>::max());
 	void unload();
 
 	bool isLoaded() const;
 
 	volatile std::size_t size{0}; // Full size of the file
 	volatile std::size_t preloadedsize{0}; // Number of samples preloaded (in data)
-	sample_t* data{nullptr};
+	gsl::owner<sample_t*> data{nullptr};
 
 	std::string filename;
 
@@ -70,7 +72,7 @@ private:
 	friend class DOMLoaderTest;
 	friend class InstrumentParserTest;
 
-	void* magic{nullptr};
+	void* magic{};
 	volatile bool is_loaded{false};
-	InstrumentChannel* instrument_channel;
+	InstrumentChannel* instrument_channel{};
 };

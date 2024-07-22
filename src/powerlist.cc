@@ -27,8 +27,8 @@
 #include "powerlist.h"
 
 #include <algorithm>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include <hugin.hpp>
 
@@ -36,7 +36,7 @@
 #ifdef __STRICT_ANSI__
 #undef __STRICT_ANSI__
 #endif
-#include <math.h>
+#include <cmath>
 
 #include "random.h"
 #include "settings.h"

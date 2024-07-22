@@ -25,23 +25,28 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
 #include "bytesizeparser.h"
+
 #include <iostream>
 #include <stdexcept>
 
-
-static std::size_t suffixToSize(const char& suffix)
+namespace {
+std::size_t suffixToSize(const char& suffix)
 {
-	int size = 1;
+	constexpr std::size_t kilo{10};
+	constexpr std::size_t mega{20};
+	constexpr std::size_t giga{30};
+
+	std::size_t size{1};
 	switch(suffix)
 	{
 	case 'k':
-		size <<= 10;
+		size <<= kilo;
 		break;
 	case 'M':
-		size <<= 20;
+		size <<= mega;
 		break;
 	case 'G':
-		size <<= 30;
+		size <<= giga;
 		break;
 	default:
 		size = 0;
@@ -49,14 +54,14 @@ static std::size_t suffixToSize(const char& suffix)
 	}
 	return size;
 }
-
+}
 
 std::size_t byteSizeParser(const std::string& argument)
 {
-	std::string::size_type suffix_index;
-	std::size_t size;
+	std::string::size_type suffix_index{};
+	std::size_t size{};
 	std::string suffix;
-	bool error = false;
+	bool error{false};
 
 	if(argument.find('-') != std::string::npos)
 	{
@@ -69,14 +74,15 @@ std::size_t byteSizeParser(const std::string& argument)
 	}
 	catch(std::invalid_argument&)
 	{
-		std::cerr << "Invalid argument for diskstreamsize" << std::endl;
+		std::cerr << "Invalid argument for diskstreamsize\n";
 		error = true;
 	}
 	catch(std::out_of_range&)
 	{
-		std::cerr << "Number too big. Try using bigger suffix for diskstreamsize" << std::endl;
+		std::cerr << "Number too big. Try using bigger suffix for diskstreamsize\n";
 		error = true;
 	}
+
 	if(!error)
 	{
 		suffix = argument.substr(suffix_index);
@@ -85,14 +91,17 @@ std::size_t byteSizeParser(const std::string& argument)
 			error = true;
 		}
 	}
-	if(!error && suffix.size() > 0)
+
+	if(!error && !suffix.empty())
 	{
-		std::size_t suffix_size = suffixToSize(suffix[0]);
+		const std::size_t suffix_size = suffixToSize(suffix[0]);
 		size *= suffix_size;
 	}
+
 	if(error)
 	{
 		return 0;
 	}
+
 	return size;
 }

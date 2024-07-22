@@ -27,7 +27,23 @@
 #include "audiocacheidmanager.h"
 
 #include <limits>
-#include <assert.h>
+#include <cassert>
+
+void CacheBuffer::allocBack(std::size_t chunk_size)
+{
+	back = new sample_t[chunk_size];
+}
+
+void CacheBuffer::deleteChunks() const
+{
+	delete[] front;
+	delete[] back;
+}
+
+void CacheBuffer::swap() noexcept
+{
+	std::swap(front, back);
+}
 
 AudioCacheIDManager::~AudioCacheIDManager()
 {
@@ -36,34 +52,34 @@ AudioCacheIDManager::~AudioCacheIDManager()
 
 void AudioCacheIDManager::init(unsigned int capacity)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
 	id2cache.resize(capacity);
 	available_ids.resize(capacity);
-	for(size_t i = 0; i < capacity; ++i)
+	for(int i = 0; i < static_cast<int>(capacity); ++i)
 	{
 		available_ids[i] = i;
 	}
 }
 
-cache_t& AudioCacheIDManager::getCache(cacheid_t id)
+CacheBuffer& AudioCacheIDManager::getCache(cacheid_t cacheid)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
-	assert(id != CACHE_NOID);
-	assert(id != CACHE_DUMMYID);
-	assert(id >= 0);
-	assert(id < (int)id2cache.size());
-	assert(id2cache[id].id == id);
+	assert(cacheid != CACHE_NOID);
+	assert(cacheid != CACHE_DUMMYID);
+	assert(cacheid >= 0);
+	assert(cacheid < (int)id2cache.size());
+	assert(id2cache[cacheid].id == cacheid);
 
-	return id2cache[id];
+	return id2cache[cacheid];
 }
 
-cacheid_t AudioCacheIDManager::registerID(const cache_t& cache)
+cacheid_t AudioCacheIDManager::registerID(const CacheBuffer& cache)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
-	cacheid_t id = CACHE_NOID;
+	cacheid_t cacheid = CACHE_NOID;
 
 	if(available_ids.empty())
 	{
@@ -71,32 +87,32 @@ cacheid_t AudioCacheIDManager::registerID(const cache_t& cache)
 	}
 	else
 	{
-		id = available_ids.back();
+		cacheid = available_ids.back();
 		available_ids.pop_back();
 	}
 
-	assert(id2cache[id].id == CACHE_NOID); // Make sure it is not already in use
+	assert(id2cache[cacheid].id == CACHE_NOID); // Make sure it is not already in use
 
-	id2cache[id] = cache;
-	id2cache[id].id = id;
+	id2cache[cacheid] = cache;
+	id2cache[cacheid].id = cacheid;
 
-	return id;
+	return cacheid;
 }
 
-void AudioCacheIDManager::releaseID(cacheid_t id)
+void AudioCacheIDManager::releaseID(cacheid_t cacheid)
 {
-	std::lock_guard<std::mutex> guard(mutex);
+	const std::lock_guard<std::mutex> guard(mutex);
 
-	assert(id2cache[id].id != CACHE_NOID); // Test if it wasn't already released.
+	assert(id2cache[cacheid].id != CACHE_NOID); // Test if it wasn't already released.
 
-	id2cache[id].id = CACHE_NOID;
+	id2cache[cacheid].id = CACHE_NOID;
 
-	available_ids.push_back(id);
+	available_ids.push_back(cacheid);
 }
 
 void AudioCacheIDManager::disableActive()
 {
-	// Run through all active cache_ts and disable them.
+	// Run through all active CacheBuffers and disable them.
 	for(auto& cache : id2cache)
 	{
 		if(cache.id != CACHE_NOID)

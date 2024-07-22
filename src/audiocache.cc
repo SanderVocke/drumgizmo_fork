@@ -28,8 +28,8 @@
 
 #include <mutex>
 
-#include <stdio.h>
-#include <assert.h>
+#include <cstdio>
+#include <cassert>
 
 #include <hugin.hpp>
 
@@ -64,9 +64,9 @@ void AudioCache::deinit()
 }
 
 // Invariant: initial_samples_needed < preloaded audio data
-sample_t* AudioCache::open(const AudioFile& file,
-                           std::size_t initial_samples_needed,
-                           int channel, cacheid_t& id)
+gsl::owner<sample_t*> AudioCache::open(const AudioFile& file,
+                                       std::size_t initial_samples_needed,
+                                       int channel, cacheid_t& new_cacheid)
 {
 	assert(chunk_size); // Assert updateChunkSize was called before processing.
 
@@ -74,16 +74,16 @@ sample_t* AudioCache::open(const AudioFile& file,
 	{
 		settings.number_of_underruns.fetch_add(1);
 		// File preload not yet ready - skip this sample.
-		id = CACHE_DUMMYID;
+		new_cacheid = CACHE_DUMMYID;
 		assert(nodata);
 		return nodata;
 	}
 
 	// Register a new id for this cache session.
-	id = id_manager.registerID({});
+	new_cacheid = id_manager.registerID({});
 
 	// If we are out of available ids we get CACHE_DUMMYID
-	if(id == CACHE_DUMMYID)
+	if(new_cacheid == CACHE_DUMMYID)
 	{
 		settings.number_of_underruns.fetch_add(1);
 		// Use nodata buffer instead.
@@ -91,20 +91,20 @@ sample_t* AudioCache::open(const AudioFile& file,
 		return nodata;
 	}
 
-	// Get the cache_t connected with the registered id.
-	cache_t& c = id_manager.getCache(id);
+	// Get the CacheBuffer connected with the registered id.
+	CacheBuffer& cache = id_manager.getCache(new_cacheid);
 
-	c.afile = nullptr; // File is opened when needed.
-	c.channel = channel;
+	cache.afile = nullptr; // File is opened when needed.
+	cache.channel = channel;
 
 	// Next call to 'next()' will read from this point.
-	c.localpos = initial_samples_needed;
+	cache.localpos = initial_samples_needed;
 
-	c.ready = false;
-	c.front = nullptr; // This is allocated when needed.
-	c.back = nullptr; // This is allocated when needed.
+	cache.ready = false;
+	cache.front = nullptr; // This is allocated when needed.
+	cache.back = nullptr; // This is allocated when needed.
 
-	std::size_t cropped_size;
+	std::size_t cropped_size{};
 
 	if(file.preloadedsize == file.size)
 	{
@@ -122,162 +122,162 @@ sample_t* AudioCache::open(const AudioFile& file,
 		//  \----------------------v-------------------/
 		//                     cropped_size
 
-		cropped_size = file.preloadedsize - c.localpos;
+		cropped_size = file.preloadedsize - cache.localpos;
 		cropped_size -= cropped_size % framesize;
 		cropped_size += initial_samples_needed;
 	}
 
-	c.preloaded_samples = file.data;
-	c.preloaded_samples_size = cropped_size;
+	cache.preloaded_samples = file.data;
+	cache.preloaded_samples_size = cropped_size;
 
 	// Next potential read from disk will read from this point.
-	c.pos = cropped_size;
+	cache.pos = cropped_size;
 
 	// Only load next buffer if there is more data in the file to be loaded...
-	if(c.pos < file.size)
+	if(cache.pos < file.size)
 	{
-		c.afile = &event_handler.openFile(file.filename);
+		cache.afile = &event_handler.openFile(file.filename);
 
-		if(c.back == nullptr)
+		if(cache.back == nullptr)
 		{
-			c.back = new sample_t[chunk_size];
+			cache.allocBack(chunk_size);
 		}
 
-		event_handler.pushLoadNextEvent(c.afile, c.channel, c.pos,
-		                                c.back, &c.ready);
+		event_handler.pushLoadNextEvent(cache.afile, cache.channel, cache.pos,
+		                                cache.back, &cache.ready);
 	}
 
-	return c.preloaded_samples; // return preloaded data
+	return cache.preloaded_samples; // return preloaded data
 }
 
-sample_t* AudioCache::next(cacheid_t id, std::size_t& size)
+gsl::owner<sample_t*> AudioCache::next(cacheid_t cacheid, std::size_t& size)
 {
-	if(id == CACHE_DUMMYID)
+	if(cacheid == CACHE_DUMMYID)
 	{
 		settings.number_of_underruns.fetch_add(1);
 		assert(nodata);
 		return nodata;
 	}
 
-	cache_t& c = id_manager.getCache(id);
+	CacheBuffer& cache = id_manager.getCache(cacheid);
 
-	if(c.preloaded_samples)
+	if(cache.preloaded_samples != nullptr)
 	{
 		// We are playing from memory:
-		if(c.localpos < c.preloaded_samples_size)
+		if(cache.localpos < cache.preloaded_samples_size)
 		{
-			sample_t* s = c.preloaded_samples + c.localpos;
+			sample_t* samples = cache.preloaded_samples + cache.localpos; // NOLINT: Fix with span?
 			// If only a partial frame is returned. Reflect this in the size
-			size = std::min(size, c.preloaded_samples_size - c.localpos);
+			size = std::min(size, cache.preloaded_samples_size - cache.localpos);
 
-			c.localpos += size;
-			return s;
+			cache.localpos += size;
+			return samples;
 		}
 
-		c.preloaded_samples = nullptr; // Start using samples from disk.
+		cache.preloaded_samples = nullptr; // Start using samples from disk.
 
 	}
 	else
 	{
 		// We are playing from cache:
-		if(c.localpos < chunk_size)
+		if(cache.localpos < chunk_size)
 		{
-			if(c.front == nullptr)
+			if(cache.front == nullptr)
 			{
 				// Just return silence.
 				settings.number_of_underruns.fetch_add(1);
-				c.localpos += size; // Skip these samples so we don't loose sync.
+				cache.localpos += size; // Skip these samples so we don't loose sync.
 				assert(nodata);
 				return nodata;
 			}
 
-			sample_t* s = c.front + c.localpos;
+			sample_t* samples = cache.front + cache.localpos;// NOLINT: Fix with span?
 			// If only a partial frame is returned. Reflect this in the size
-			size = std::min(size, chunk_size - c.localpos);
-			c.localpos += size;
-			return s;
+			size = std::min(size, chunk_size - cache.localpos);
+			cache.localpos += size;
+			return samples;
 		}
 	}
 
 	// Check for buffer underrun
-	if(!c.ready)
+	if(!cache.ready)
 	{
 		// Just return silence.
 		settings.number_of_underruns.fetch_add(1);
-		c.localpos += size; // Skip these samples so we don't loose sync.
+		cache.localpos += size; // Skip these samples so we don't loose sync.
 		assert(nodata);
 		return nodata;
 	}
 
 	// Swap buffers
-	std::swap(c.front, c.back);
+	cache.swap();
 
 	// Next time we go here we have already read the first frame.
-	c.localpos = size;
+	cache.localpos = size;
 
-	c.pos += chunk_size;
+	cache.pos += chunk_size;
 
 	// Does the file have remaining unread samples?
-	assert(c.afile); // Assert that we have an audio file.
-	if(c.pos < c.afile->getSize())
+	assert(cache.afile); // Assert that we have an audio file.
+	if(cache.pos < cache.afile->getSize())
 	{
 		// Do we have a back buffer to read into?
-		if(c.back == nullptr)
+		if(cache.back == nullptr)
 		{
-			c.back = new sample_t[chunk_size];
+			cache.allocBack(chunk_size);
 		}
 
-		event_handler.pushLoadNextEvent(c.afile, c.channel, c.pos,
-		                                c.back, &c.ready);
+		event_handler.pushLoadNextEvent(cache.afile, cache.channel, cache.pos,
+		                                cache.back, &cache.ready);
 	}
 
 	// We should always have a front buffer at this point.
-	assert(c.front);
-	return c.front;
+	assert(cache.front);
+	return cache.front;
 }
 
-bool AudioCache::isReady(cacheid_t id)
+bool AudioCache::isReady(cacheid_t cacheid)
 {
-	if(id == CACHE_DUMMYID)
+	if(cacheid == CACHE_DUMMYID)
 	{
 		return true;
 	}
 
-	cache_t& cache = id_manager.getCache(id);
+	const CacheBuffer& cache = id_manager.getCache(cacheid);
 	return cache.ready;
 }
 
-void AudioCache::close(cacheid_t id)
+void AudioCache::close(cacheid_t cacheid)
 {
-	if(id == CACHE_DUMMYID)
+	if(cacheid == CACHE_DUMMYID)
 	{
 		return;
 	}
 
-	event_handler.pushCloseEvent(id);
+	event_handler.pushCloseEvent(cacheid);
 }
 
 void AudioCache::setFrameSize(std::size_t framesize)
 {
 	// Make sure the event handler thread is stalled while we set the framesize
 	// state.
-	std::lock_guard<AudioCacheEventHandler> event_handler_lock(event_handler);
+	const std::lock_guard<AudioCacheEventHandler> event_handler_lock(event_handler);
 
 	// NOTE: Not threaded...
 	//std::lock_guard<AudioCacheIDManager> id_manager_lock(id_manager);
 
 	if(framesize > nodata_framesize)
 	{
-		if(nodata)
+		if(nodata != nullptr)
 		{
-			nodata_dirty.emplace_back(std::move(nodata)); // Store for later deletion.
+			nodata_dirty.emplace_back(nodata); // Store for later deletion.
 		}
 		nodata = new sample_t[framesize];
 		nodata_framesize = framesize;
 
 		for(std::size_t i = 0; i < framesize; ++i)
 		{
-			nodata[i] = 0.0f;
+			nodata[i] = 0.0f;// NOLINT: Fix with span?
 		}
 	}
 
@@ -292,9 +292,11 @@ std::size_t AudioCache::getFrameSize() const
 void AudioCache::updateChunkSize(std::size_t output_channels)
 {
 	// Make sure we won't get out-of-range chunk sizes.
-	std::size_t disk_cache_chunk_size =
-		std::max(settings.disk_cache_chunk_size.load(), std::size_t(512u * 1024u));
-	output_channels = std::max(output_channels, std::size_t(1u));
+	constexpr std::size_t max_cache_chunk_size{512ul * 1024ul};
+	const auto disk_cache_chunk_size =
+		std::max(settings.disk_cache_chunk_size.load(), max_cache_chunk_size);
+	constexpr std::size_t min_output_channels{1};
+	output_channels = std::max(output_channels, min_output_channels);
 
 	// 1MB pr. chunk divided over 16 channels, 4 bytes pr. sample.
 	const auto ideal_chunk_size =

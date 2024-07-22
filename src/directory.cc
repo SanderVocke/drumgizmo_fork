@@ -27,14 +27,14 @@
 #include "directory.h"
 
 #include <dirent.h>
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 #include <algorithm>
 #include <vector>
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
 
-#include <platform.h>
+#include "platform.h"
 
 #if DG_PLATFORM == DG_PLATFORM_WINDOWS
 #include <direct.h>

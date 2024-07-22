@@ -62,13 +62,13 @@ bool comparator(const Text& a, const Text& b)
 
 Translation::Translation()
 {
-	std::lock_guard<std::mutex>(singleton.mutex);
+	const std::lock_guard<std::mutex> lock(singleton.mutex);
 	++singleton.refcnt;
 }
 
 Translation::~Translation()
 {
-	std::lock_guard<std::mutex>(singleton.mutex);
+	const std::lock_guard<std::mutex> lock(singleton.mutex);
 
 	--singleton.refcnt;
 
@@ -219,7 +219,7 @@ bool Translation::load(const char* catalog, std::size_t size)
 	std::sort(texts.begin(), texts.end(), comparator);
 
 	{
-		std::lock_guard<std::mutex>(singleton.mutex);
+		const std::lock_guard<std::mutex> lock(singleton.mutex);
 		std::swap(singleton.texts, texts);
 	}
 
@@ -228,7 +228,7 @@ bool Translation::load(const char* catalog, std::size_t size)
 
 const char* Translation::gettext(std::uint64_t msgid, const char* original)
 {
-	std::lock_guard<std::mutex>(singleton.mutex);
+	const std::lock_guard<std::mutex> lock(singleton.mutex);
 	if(singleton.refcnt == 0)
 	{
 		return original;

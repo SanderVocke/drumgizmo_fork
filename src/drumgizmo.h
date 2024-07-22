@@ -46,8 +46,6 @@
 #include "inputprocessor.h"
 #include "zrwrapper.h"
 
-#define REFSFILE "refs.conf"
-
 class DrumGizmo
 {
 public:
@@ -105,7 +103,7 @@ protected:
 
 	Random rand;
 	std::array<ZRWrapper, NUM_CHANNELS> zita;
-	std::array<std::unique_ptr<sample_t>, NUM_CHANNELS> resampler_input_buffer;
+	std::array<std::unique_ptr<sample_t[]>, NUM_CHANNELS> resampler_input_buffer;
 	double ratio = 1.0;
 	std::vector<sample_t> scratch_buffer;
 };
